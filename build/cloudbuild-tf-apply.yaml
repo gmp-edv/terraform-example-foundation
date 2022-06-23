@@ -37,9 +37,6 @@ steps:
   args:
   - -c
   - |
-      echo "===================="
-      git --version
-      echo "===================="
       ./tf-wrapper.sh init ${BRANCH_NAME}
 
 # [START tf-plan]
