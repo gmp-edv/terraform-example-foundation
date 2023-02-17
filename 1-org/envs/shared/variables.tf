@@ -349,12 +349,13 @@ variable "gcp_billing_admin_user" {
 variable "location_restriction" {
   description = "list of all the locations where the resources can be deployed"
   type        = list(string)
+  default = ["",]
 }
 
 variable "lengt_location_restriction" {
   description = "length of the variable location_restriction"
   type        = string
-  default     = null
+  default     = ""
 }
 
 variable "enable_location_restriction" {
