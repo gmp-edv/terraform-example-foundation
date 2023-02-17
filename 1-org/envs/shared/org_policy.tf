@@ -69,6 +69,21 @@ module "org_vm_external_ip_access" {
   constraint      = "constraints/compute.vmExternalIpAccess"
 }
 
+
+module "resource_location" {
+  count   = var.enable_location_restriction ? 1 : 0
+  source          = "terraform-google-modules/org-policy/google"
+  version         = "~> 3.0"
+  organization_id = local.organization_id
+  folder_id       = local.folder_id
+  policy_for      = local.policy_for
+  policy_type     = "list"
+  allow         = var.location_restriction
+  allow_list_length  = var.lengt_location_restriction
+  constraint      = "constraints/gcp.resourceLocations"
+}
+
+
 module "org_skip_default_network" {
   source          = "terraform-google-modules/org-policy/google"
   version         = "~> 3.0"
