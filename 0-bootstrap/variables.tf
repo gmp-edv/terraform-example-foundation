@@ -82,6 +82,12 @@ variable "cloud_source_repos" {
   default     = ["gcp-org", "gcp-environments", "gcp-networks", "gcp-projects"]
 }
 
+variable "service_accounts_to_groups" {
+  description = "add the service accounts to groups rather of applying individualy perms to them"
+  type        = bool
+  default     = false
+}
+
 /* ----------------------------------------
     Specific to jenkins_bootstrap module
    ---------------------------------------- */
