@@ -22,6 +22,22 @@ locals {
   org_admins_org_iam_permissions = var.org_policy_admin_role == true ? [
     "roles/orgpolicy.policyAdmin", "roles/resourcemanager.organizationAdmin", "roles/billing.user"
   ] : ["roles/resourcemanager.organizationAdmin", "roles/billing.user"]
+  terraform_sa_mode = var.service_accounts_to_groups == false ? [
+    "roles/accesscontextmanager.policyAdmin",
+    "roles/billing.user",
+    "roles/compute.networkAdmin",
+    "roles/compute.xpnAdmin",
+    "roles/iam.securityAdmin",
+    "roles/iam.serviceAccountAdmin",
+    "roles/logging.configWriter",
+    "roles/orgpolicy.policyAdmin",
+    "roles/resourcemanager.projectCreator",
+    "roles/resourcemanager.folderAdmin",
+    "roles/securitycenter.notificationConfigEditor",
+    "roles/resourcemanager.organizationViewer"
+  ] : []
+  enable_impersonation_cloud_build = var.service_accounts_to_groups == false ? true : false
+
 }
 
 resource "google_folder" "bootstrap" {
@@ -77,20 +93,7 @@ module "seed_bootstrap" {
     "billingbudgets.googleapis.com"
   ]
 
-  sa_org_iam_permissions = [
-    "roles/accesscontextmanager.policyAdmin",
-    "roles/billing.user",
-    "roles/compute.networkAdmin",
-    "roles/compute.xpnAdmin",
-    "roles/iam.securityAdmin",
-    "roles/iam.serviceAccountAdmin",
-    "roles/logging.configWriter",
-    "roles/orgpolicy.policyAdmin",
-    "roles/resourcemanager.projectCreator",
-    "roles/resourcemanager.folderAdmin",
-    "roles/securitycenter.notificationConfigEditor",
-    "roles/resourcemanager.organizationViewer"
-  ]
+  sa_org_iam_permissions = local.terraform_sa_mode
 }
 
 resource "google_billing_account_iam_member" "tf_billing_admin" {
@@ -112,7 +115,7 @@ module "cloudbuild_bootstrap" {
   terraform_sa_email          = module.seed_bootstrap.terraform_sa_email
   terraform_sa_name           = module.seed_bootstrap.terraform_sa_name
   terraform_state_bucket      = module.seed_bootstrap.gcs_bucket_tfstate
-  sa_enable_impersonation     = true
+  sa_enable_impersonation     = local.enable_impersonation_cloud_build
   cloudbuild_plan_filename    = "cloudbuild-tf-plan.yaml"
   cloudbuild_apply_filename   = "cloudbuild-tf-apply.yaml"
   project_prefix              = var.project_prefix
@@ -151,6 +154,23 @@ module "cloudbuild_bootstrap" {
     "non\\-production", //non-production needs a \ to ensure regex matches correct branches.
     "production"
   ]
+}
+
+
+#adding perms on the terraform service account without aplying the org perm serviceUsageConsumer
+
+resource "google_service_account_iam_member" "cloudbuild_terraform_sa_impersonate_permissions" {
+  count = var.service_accounts_to_groups == true? 1 : 0
+  service_account_id = module.seed_bootstrap.terraform_sa_name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${data.google_project.cloudbuild.number}@cloudbuild.gserviceaccount.com"
+}
+
+resource "google_storage_bucket_iam_member" "cloudbuild_state_iam" {
+  count = var.service_accounts_to_groups == true ? 1 : 0
+  bucket = module.seed_bootstrap.gcs_bucket_tfstate
+  role   = "roles/storage.admin"
+  member = "serviceAccount:${data.google_project.cloudbuild.number}@cloudbuild.gserviceaccount.com"
 }
 
 // Standalone repo for Terraform-validator policies.
